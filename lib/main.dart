@@ -1,6 +1,5 @@
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
@@ -34,10 +33,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  var _themeColor = Colors.white;
+  final _themeColor = Colors.white;
   var course = '';
   var year = '';
-  bool _showExtraDropdown = false; 
+  bool _showExtraDropdown1 = false; 
+  bool _showExtraDropdown2 = false; 
+
   bool _projectOption = false;
   String? _selectedBlock1Option;
   String? _selectedBlock2Option;
@@ -45,9 +46,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<List<dynamic>> _data = [];
   List<String> dropdownItems = []; // List to store dropdown options
-  List<String> projDropdown = [];
+  List<String> projDropdown = []; // List to store Project options
   List<String> block2_dropdown = [];
 
+  // List of colours for the output data
   final List<Color> columnColors = [
   Colors.red.shade100,
   Colors.green.shade100,
@@ -67,48 +69,49 @@ class _MyHomePageState extends State<MyHomePage> {
   Colors.deepPurple.shade100,
   Colors.grey.shade300, // subtle neutral
 ];
-
+  
+  // Loads CSV files to fill in the data for dropdown menus (for block1, block2 and project options)
   Future<void> _loadDropdownData() async {
       _projectOption = false;
-      String block1CSV = "assets/$course/${year}_options1.csv";
-      String block2CSV = "assets/$course/${year}_options2.csv";
-      List<String> extractedOptions1 = [];
+      String block1CSV = "assets/$course/${year}_options1.csv"; // loads Block1 csv (using string interpolation to locate correct csv)
+      String block2CSV = "assets/$course/${year}_options2.csv"; // loads block2 csv (same method)
+      List<String> extractedOptions1 = []; 
       List<String> extractedOptions2 = [];
       List<String> project = [];
       String projectCSV = "";
 
+      // if statement checks to if the conditions are met to require the extra "project option" dropdown
       if (course == "Cyber Security" && year == "year3") {
       _projectOption = true;
-      projectCSV = "assets/$course/${year}_project.csv"; // <-- make sure this matches actual file
+      projectCSV = "assets/$course/${year}_project.csv"; 
        }
 
       try {
-        // Load main options from block 1
+        // Load core options from block 1
         final mainData1 = await rootBundle.loadString(block1CSV);
         List<List<dynamic>> mainCsv1 = const CsvToListConverter().convert(mainData1);
         extractedOptions1 = mainCsv1.map((row) => row[1].toString()).toList();
+        _showExtraDropdown1 = true;
 
         } catch (e) {
         print('Error loading CSV file: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error loading dropdown options: $e'),
-        ));
+        _showExtraDropdown1 = false;
+       
       }
 
       try {
-        //loads options from block2
+        //loads core options from block2
         final mainData2 = await rootBundle.loadString(block2CSV);
         List<List<dynamic>> mainCsv2 = const CsvToListConverter().convert(mainData2);
         extractedOptions2 = mainCsv2.map((row) => row[1].toString()).toList();
+        _showExtraDropdown2 = true;
 
       } catch (e) {
         print('Error loading CSV file: $e');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error loading dropdown options: $e'),
-        ));
+        _showExtraDropdown2 = false;
       }
 
-        // Load project options if needed
+        // Load project options if needed (forced error in the event)
         if (_projectOption) {
           final projectData = await rootBundle.loadString(projectCSV);
           List<List<dynamic>> projectCsv = const CsvToListConverter().convert(projectData);
@@ -126,30 +129,33 @@ class _MyHomePageState extends State<MyHomePage> {
       
     }
 
+  // Sorts data by due date (SetState will refresh the data on screen)
   void _sortDataByDueDate() {
+
   var dateFormat = DateFormat("dd/MM/yyyy");
 
   // Store the first item (to keep it fixed at the top)
   List<List<dynamic>> fixedItem = [_data.isNotEmpty ? _data[0] : []];
 
-  // Separate the data into valid and invalid date lists, skipping the first item
+  // Creates lists for both valid and invalid rows
   List<List<dynamic>> validRows = [];
   List<List<dynamic>> invalidRows = [];
 
-  for (var row in _data.sublist(1)) {  // Skip the first item
+  for (var row in _data.sublist(1)) {  // Skip the first item (this is as it is the header row containing the label for the data in each column)
     String date = row.length > 6 ? row[6].toString() : '';  // Get the date from column 7 (index 6)
 
     try {
       if (date.isNotEmpty) {
+
         // Try parsing the date
+        // ignore: unused_local_variable
         DateTime dateTime = dateFormat.parse(date);
         validRows.add(row);  // Add to valid list if date is valid
       } else {
         invalidRows.add(row);  // If no date, add to invalid list
       }
     } catch (e) {
-      // If error parsing date, treat it as invalid
-      invalidRows.add(row);
+      invalidRows.add(row); // If error parsing date, treat it as invalid
     }
   }
 
@@ -179,14 +185,16 @@ class _MyHomePageState extends State<MyHomePage> {
   });
 }
 
+  // Sorts data alphabetically (this will order the data by module)
   void _sortDataAlphabetically() {
+
   // Ensure the first item stays fixed
   List<List<dynamic>> fixedItem = [_data.isNotEmpty ? _data[0] : []];
 
-  // Sort the rest of the items by the value in index 1 (alphabetically)
+  // adds all remaining data outside the first item into a "sortable list"
   List<List<dynamic>> sortableData = _data.length > 1 ? _data.sublist(1) : [];
 
-  // Sort the remaining data based on index 1 (alphabetically)
+  // Sort the remaining data based on index 1 (Module Name)
   sortableData.sort((a, b) {
     String valueA = a.length > 1 ? a[1].toString().toLowerCase() : '';
     String valueB = b.length > 1 ? b[1].toString().toLowerCase() : '';
@@ -195,11 +203,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // Combine the fixed first item with the sorted data
   setState(() {
-    _data = fixedItem + sortableData;  // Keep the first item fixed, then sorted rows
+    _data = fixedItem + sortableData;  // Keep the first item fixed, then add sorted rows
   });
 }
 
-  void _addRowFromAnotherCSV(String option1, String version) async {
+  // Add's rows to _data from a different CSV (based on the options chosen in the optional module dropdowns) and remove any previosuly selected options from _data
+  void _addRowFromAnotherCSV(String option, String version) async {
+  
   try {
     // Load the master CSV file
     final rawData = await rootBundle.loadString("assets/Master_Module.csv");
@@ -209,49 +219,56 @@ class _MyHomePageState extends State<MyHomePage> {
     final optionsData = await rootBundle.loadString("assets/$course/${year}_$version.csv");
     List<List<dynamic>> optionsCsv = const CsvToListConverter().convert(optionsData);
 
-    // Search for rows that match the selected module in the csv(case-insensitive)
+    // The below section is used to ensure that there is no duplicate options in _data.
+
+    // Make a list of all data in Master_Module that matches the options (This was done to ensure there was ony one selected option at any time in _data)
     List<List<dynamic>> matchingRows = optionsCsv.where((row) =>
-        row.any((cell) => cell.toString().toLowerCase() == option1.toLowerCase())
+        row.any((cell) => cell.toString().toLowerCase() == option.toLowerCase())
     ).toList();
 
-    // If there are matching rows, proceed with replacing the old ones
+    // If there are matching rows remove them from _data (if this is the option has been selected already and is being changed this will always occur)
     if (matchingRows.isNotEmpty) {
       setState(() {
-        // Remove any previously selected options that came from options
+        // Remove any previously selected options from _data
         _data.removeWhere((row) =>
             optionsCsv.any((csvRow) =>
                 row[1].toString().toLowerCase() == csvRow[1].toString().toLowerCase()
             )
         );
+        
+        //The below section is used in order to find the matching assessments in Master_Module.csv to match the selected module from the dropdown.
 
-        // Find matching rows in the master CSV based on the second column (column 2) of options csv
+        // Find matching rows in the master CSV based on the first column (column 1) of options csv
         for (var matchingRow in matchingRows) {
-          String optionColumn2 = matchingRow[0].toString();  // Get the value from column 2 in year2_options1.csv
+          String optionColumn1 = matchingRow[0].toString();  // Get the value from column 1 in options.csv
 
-          // Find all corresponding rows in the master CSV where column 2 matches
+          // Find all corresponding rows in the master CSV where column 1 matches
           List<List<dynamic>> matchedMasterRows = masterCsvData.where((masterRow) =>
-              masterRow[0].toString().toLowerCase() == optionColumn2.toLowerCase()
+              masterRow[0].toString().toLowerCase() == optionColumn1.toLowerCase()
           ).toList();
 
           // Add all matching rows from the master CSV to _data
           for (var matchedRow in matchedMasterRows) {
-            _data.add(matchedRow);  // Add each matching row
+            _data.add(matchedRow);  // Add each matching row to _data
           }
 
           if (matchedMasterRows.isEmpty) {
-            print("No matching row found in master CSV for: $optionColumn2");
+            print("No matching row found in master CSV for: $optionColumn1");
           }
         }
       });
     } else {
-      print("No matching row found in options for: $option1");
+      print("No matching row found in options for: $option");
     }
   } catch (e) {
     print('Error loading second CSV file: $e');
   }
 }
 
+  // Reset the options dropdowns to null (prevents them showing previously selected data in the event a new year/course is selected)
   void _resetDropdownSelections() {
+  
+  // setState will refresh the screen
   setState(() {
     _selectedBlock1Option = null;
     _selectedBlock2Option = null;
@@ -263,40 +280,32 @@ class _MyHomePageState extends State<MyHomePage> {
   });
 }
 
-  void _loadCSV(String course, String year) async { //loads the base csv file containing core modules for the respective year and course 
+  //loads the base csv file containing core modules for the respective year and course 
+  void _loadCSV(String course, String year) async { 
     _resetDropdownSelections(); // Clear selections and dropdown data
 
-  if (year == "year3" && course == "Cyber Security"){
-    setState(() {
-      _showExtraDropdown = true;
-      _projectOption = true;
-    });
-    _loadDropdownData();
-  }
-
-  else if (year == "year2" || year == "year3") {
-    setState(() {
-      _showExtraDropdown = true;
-      _projectOption = false;
-    });
+  // checks if the selected year is 2 or 3 - this is as extra dropdowns will need to be created 
+  if (year == "year2" || year == "year3") {
     _loadDropdownData();
 
+    // Ensures all non-relevant dropdowns are made invisible again
   } else {
     setState(() {
-      _showExtraDropdown = false;
+      _showExtraDropdown1 = false;
+      _showExtraDropdown2 = false;
       _projectOption = false;
     });
   }
 
-    var course_data = "assets/" + course;
-    var year_data = course_data + "/" + year + ".csv";
+    String course_data = "assets/" + course;
+    String year_data = course_data + "/" + year + ".csv"; // Using string concatenation to locate the correct CSV
 
     try {
       final rawData = await rootBundle.loadString(year_data);
       List<List<dynamic>> listData = const CsvToListConverter().convert(rawData);
 
       // Load the master CSV
-    final masterRaw = await rootBundle.loadString('assets/master_module.csv');
+    final masterRaw = await rootBundle.loadString('assets/Master_Module.csv');
     List<List<dynamic>> masterData = const CsvToListConverter().convert(masterRaw);
 
     // Create a list to hold matched rows
@@ -415,7 +424,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
             // Extra dropdown appears only for year 2 and 3 (for block 1)
             Visibility(
-              visible: _showExtraDropdown,
+              visible: _showExtraDropdown1,
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: DropdownMenu(
@@ -440,7 +449,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
             // Extra dropdown appears only for year 2 and 3 (for block 2)
             Visibility(
-              visible: _showExtraDropdown,
+              visible: _showExtraDropdown2,
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: DropdownMenu(
