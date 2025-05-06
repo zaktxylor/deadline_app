@@ -33,21 +33,22 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _themeColor = Colors.white;
-  var course = '';
-  var year = '';
-  bool _showExtraDropdown1 = false; 
-  bool _showExtraDropdown2 = false; 
-
-  bool _projectOption = false;
+  final _themeColor = Colors.white; // project colour theme (white)
+  String course = ''; // declare course variable (String)
+  String year = ''; // declare year variable (string)
+  bool _showExtraDropdown1 = false; // declare show extra option1 variable
+  bool _showExtraDropdown2 = false; // declare show extra option2 variable
+  bool _projectOption = false; // declare show project option variable
+  
+  // holds the selected option from the dropdown menu's
   String? _selectedBlock1Option;
   String? _selectedBlock2Option;
   String? _selectedProjectOption;
 
-  List<List<dynamic>> _data = [];
-  List<String> dropdownItems = []; // List to store dropdown options
+  List<List<dynamic>> _data = []; // declare list to store data to be ouputted 
+  List<String> block1Option = []; // List to store block1 option
   List<String> projDropdown = []; // List to store Project options
-  List<String> block2_dropdown = [];
+  List<String> block2Option = []; // list to store block2 option
 
   // List of colours for the output data
   final List<Color> columnColors = [
@@ -120,8 +121,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
         // Update UI
         setState(() {
-          dropdownItems = extractedOptions1;
-          block2_dropdown = extractedOptions2;
+          block1Option = extractedOptions1;
+          block2Option = extractedOptions2;
           if (_projectOption == true) {
             projDropdown = project;
           }
@@ -274,8 +275,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _selectedBlock2Option = null;
     _selectedProjectOption = null;
 
-    dropdownItems = [];
-    block2_dropdown = [];
+    block1Option = [];
+    block2Option = [];
     projDropdown = [];
   });
 }
@@ -302,67 +303,69 @@ class _MyHomePageState extends State<MyHomePage> {
 
     try {
       final rawData = await rootBundle.loadString(year_data);
-      List<List<dynamic>> listData = const CsvToListConverter().convert(rawData);
+      List<List<dynamic>> listData = const CsvToListConverter().convert(rawData); // Convert content of csv into a list
 
-      // Load the master CSV
-    final masterRaw = await rootBundle.loadString('assets/Master_Module.csv');
-    List<List<dynamic>> masterData = const CsvToListConverter().convert(masterRaw);
+      // Load Master_Module.csv
+      final masterRaw = await rootBundle.loadString('assets/Master_Module.csv');
+      List<List<dynamic>> masterData = const CsvToListConverter().convert(masterRaw); //convert content of Master_Module.csv
 
-    // Create a list to hold matched rows
-    List<List<dynamic>> matchedRows = [];
+      // Create a list to hold matched rows
+      List<List<dynamic>> matchedRows = [];
 
-    if (masterData.isNotEmpty) {
-      matchedRows.add(masterData[0]);
-    }
+      //stores the first item in Master_Module.csv (this is the header row that details the content of each column)
+      if (masterData.isNotEmpty) {
+        matchedRows.add(masterData[0]);
+      }
 
-    // Assuming first column in listData is the identifier (e.g., module code)
-    for (var row in listData) {
-      final keyword = row[4].toString().toLowerCase();
+      // fifth column in listData is the identifier (module code)
+      for (var row in listData) {
+        final keyword = row[4].toString().toLowerCase();
 
-      // Find matches in masterData where any column contains the keyword
-      final matches = masterData.where((masterRow) =>
-        masterRow.any((cell) =>
-          cell.toString().toLowerCase() == keyword
-        )
-      );
+        // Find matches in Master_Module.csv where the KeyWord is mentioned
+        final matches = masterData.where((masterRow) =>
+          masterRow.any((cell) =>
+            cell.toString().toLowerCase() == keyword
+          )
+        );
 
-      matchedRows.addAll(matches);
+      matchedRows.addAll(matches); // add all matches to the matchedRows Lissst
     }
 
       setState(() {
-        _data = matchedRows; // Update the _data list with the CSV data
+        _data = matchedRows; // Update the _data list with the matchedRows data
       });
-    } catch (e) {
+    } catch (e) { //catch any error loading a CSV to prevent the program from failing in the event a year is selected but not a course (or vice versa)
       print('Error loading CSV file: $e');
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    // Safely handle empty _data list
-  final List<dynamic> headerRow = _data.isNotEmpty ? _data[0] : [];
-  final List<List<dynamic>> dataRows = _data.length > 1 ? _data.sublist(1) : [];
+  Widget build(BuildContext context) { // Main webpage build
+  // Safely handle empty _data list
+  final List<dynamic> headerRow = _data.isNotEmpty ? _data[0] : []; // Presets HeaderRow as the first item in _data (as long as _data isn't empty)
+  final List<List<dynamic>> dataRows = _data.length > 1 ? _data.sublist(1) : []; //return a new list skipping the 1st index (as this is the header)
   
-  final screenWidth = MediaQuery.of(context).size.width;
+  final screenWidth = MediaQuery.of(context).size.width; // gain the screen size of the device
+
   // Determine columns to show based on screen width
   List<int> columnsToShow;
   
   if (screenWidth < 400) {
-    // For very small screens (e.g., phone), show only columns 1, 6, and 7
+    // very small screens (e.g phone), show only columns 1, 6, and 7
     columnsToShow = [1, 5, 6];
   } else if (screenWidth < 600) {
-    // Small screen size, show columns 1, 6, 7, and a couple more
+    // Small screen size (e.g ipad), show columns 1, 6, 7, and a couple more
     columnsToShow = [0, 1, 5, 6];
   } else if (screenWidth < 900) {
-    // Medium screen, show more columns like 0, 1, 2, 6, 7, 8
+    // Medium screen (e.g laptop), show more columns like 0, 1, 2, 6, 7, 8
     columnsToShow = [0, 1, 2, 5, 6, 7];
   } else {
-    // For larger screens, show all columns
+    // For larger screens (e.g desktop monitor), show all columns
     columnsToShow = List.generate(headerRow.length, (index) => index);
   }
 
     return Scaffold(
-      backgroundColor: _themeColor,
+      backgroundColor: _themeColor, // set the screen colour
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -372,8 +375,9 @@ class _MyHomePageState extends State<MyHomePage> {
             
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: DropdownMenu(
-                dropdownMenuEntries: <DropdownMenuEntry<String>>[ //Dropdwon widget for course
+
+              child: DropdownMenu( //Dropdwon widget to select course
+                dropdownMenuEntries: <DropdownMenuEntry<String>>[ 
                   DropdownMenuEntry(value: "Computer science", label: 'Computer Science'),
                   DropdownMenuEntry(value: "Cyber Security", label: 'Cyber Security and Forensic Computing'),
                   DropdownMenuEntry(value: "Computing", label: "Computing"),
@@ -385,9 +389,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 onSelected: (String? value) {
                   if (value != null) {
                     setState(() {
-                      course = value;
+                      course = value; // stores the chosen course in the global course variable 
                     });
-                    _loadCSV(course, year);
+                    _loadCSV(course, year); // Attempts _loadCSV (_loadCSV will catch an error and not run if year has not been selected)
                   }
                 },
                 hintText: "Select your course: ",
@@ -400,18 +404,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: DropdownMenu(
-                dropdownMenuEntries: <DropdownMenuEntry<String>>[ //dropdown widet for year
-                  DropdownMenuEntry(value: "year1", label: 'Level 5 (year 1)'),
-                  DropdownMenuEntry(value: "year2", label: 'Level 6 (year 2)'),
-                  DropdownMenuEntry(value: "year3", label: 'Level 7 (year 3)'),
+              
+              child: DropdownMenu( //dropdown widet to select year
+                dropdownMenuEntries: <DropdownMenuEntry<String>>[ 
+                  DropdownMenuEntry(value: "year1", label: 'Level 4 (year 1)'),
+                  DropdownMenuEntry(value: "year2", label: 'Level 5 (year 2)'),
+                  DropdownMenuEntry(value: "year3", label: 'Level 6 (year 3)'),
                 ],
                 onSelected: (String? value) {
                   if (value != null) {
                     setState(() {
-                      year = value;
+                      year = value; // stores the chosen year in the global year variable 
                     });
-                    _loadCSV(course, year);
+                    _loadCSV(course, year); // Attempts _loadCSV (_loadCSV will catch an error and not run if course has not been selected)
                   }
                 },
                 hintText: "Select your year: ",
@@ -429,7 +434,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: const EdgeInsets.all(8.0),
                 child: DropdownMenu(
                   key: ValueKey('$course-$year-block1-${_selectedBlock1Option ?? ''}'),
-                  dropdownMenuEntries: dropdownItems.map((value) {
+                  dropdownMenuEntries: block1Option.map((value) {
                     return DropdownMenuEntry(value: value, label: value);
                   }).toList(),
                   initialSelection: _selectedBlock1Option,
@@ -454,7 +459,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: const EdgeInsets.all(8.0),
                 child: DropdownMenu(
                   key: ValueKey('$course-$year-block2-${_selectedBlock2Option ?? ''}'),
-                  dropdownMenuEntries: block2_dropdown.map((value) {
+                  dropdownMenuEntries: block2Option.map((value) {
                     return DropdownMenuEntry(value: value, label: value);
                   }).toList(),
                   initialSelection: _selectedBlock2Option,
@@ -536,6 +541,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
           // Only display the ListView.builder if there are data rows
           if (dataRows.isNotEmpty) 
+
+            // ListView.builder to ouput all the data from dataRows
             Expanded(
               child: ListView.builder(
                 itemCount: dataRows.length,
